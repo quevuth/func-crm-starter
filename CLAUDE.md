@@ -14,8 +14,15 @@ This project is a modern Omnichannel Social CRM connecting to **Func.vn** (Zalo 
 - `npm run dev`: Start local CRM frontend (Vite) at `http://localhost:5173`
 - `npm run webhook`: Run local webhook receiver server (`src/server/webhook-listener.ts`)
 
-## Architecture & Integration
-- For Public API calls: use `funcClient.callAction(action, data)`
-- For real-time messaging: see `src/server/webhook-listener.ts`
-- For types: see `src/types/func.ts`
-- When calling MCP tools `func_get_action_schema` or `func_get_action_guide`, always provide both `platform` ('ZALO_USER', 'ZALO_OA', 'FACEBOOK_PAGE', 'FACEBOOK_USER', 'WHATSAPP_USER', 'FUNC') and `action_name`.
+## Architecture & Integration Rules (CRITICAL FOR AI AGENTS)
+1. **Public RPC API vs Client REST API:**
+   - When calling Public RPC actions (via `POST /public/functions/api`), use platform-native IDs:
+     - `ZALO_USER`: `user_id` (Zalo origin ID) or `phone_number`. **DO NOT USE `contact_pid`**.
+     - `FACEBOOK_PAGE`: `recipient: { id: "psid" }`.
+     - `WHATSAPP_USER`: `chat_id: "8491...@s.whatsapp.net"`.
+     - `ZALO_OA`: `user_id`.
+   - `contact_pid` is ONLY used for `FUNC` aggregation actions (`FUNC_RUN_FLOW`, `FUNC_GET_MESSAGES`) or Client REST API (`/accounts/:account_pid/...`).
+2. **Zalo Text Formatting & UTF-16 Code Units:**
+   - Use `formatZaloMarkdown(text)` from `src/lib/func-client.ts` to convert Markdown (`**bold**`, `*italic*`, `~~strike~~`, `__underline__`) into `{ message, styles }` with 100% accurate UTF-16 offsets (automatically handles emoji surrogate pairs).
+3. **MCP Tool Invocations:**
+   - Always pass both `platform` ('ZALO_USER', 'ZALO_OA', 'FACEBOOK_PAGE', 'FACEBOOK_USER', 'WHATSAPP_USER', 'FUNC') and `action_name` when calling `func_get_action_schema` or `func_get_action_guide`.

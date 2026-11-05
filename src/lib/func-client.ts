@@ -7,6 +7,73 @@ export interface FuncClientConfig {
   userToken?: string;
 }
 
+export interface ZaloStyleItem {
+  start: number;
+  len: number;
+  st: "b" | "i" | "u" | "s" | string;
+}
+
+/**
+ * Parser chuyển đổi văn bản Markdown sang định dạng styles Zalo chuẩn xác 100% với UTF-16 Code Units.
+ * Hỗ trợ: **in đậm** ('b'), *in nghiêng* ('i'), ~~gạch ngang~~ ('s'), __gạch chân__ ('u').
+ * Tự động tính bù 2 code units cho mỗi ký tự Emoji (😊, 🚀, 🔥).
+ */
+export function formatZaloMarkdown(markdown: string): {
+  message: string;
+  styles: ZaloStyleItem[];
+} {
+  const styles: ZaloStyleItem[] = [];
+  let cleanText = "";
+  let i = 0;
+
+  while (i < markdown.length) {
+    if (markdown.startsWith("**", i)) {
+      const end = markdown.indexOf("**", i + 2);
+      if (end !== -1) {
+        const inner = markdown.slice(i + 2, end);
+        styles.push({ start: cleanText.length, len: inner.length, st: "b" });
+        cleanText += inner;
+        i = end + 2;
+        continue;
+      }
+    }
+    if (markdown.startsWith("~~", i)) {
+      const end = markdown.indexOf("~~", i + 2);
+      if (end !== -1) {
+        const inner = markdown.slice(i + 2, end);
+        styles.push({ start: cleanText.length, len: inner.length, st: "s" });
+        cleanText += inner;
+        i = end + 2;
+        continue;
+      }
+    }
+    if (markdown.startsWith("__", i)) {
+      const end = markdown.indexOf("__", i + 2);
+      if (end !== -1) {
+        const inner = markdown.slice(i + 2, end);
+        styles.push({ start: cleanText.length, len: inner.length, st: "u" });
+        cleanText += inner;
+        i = end + 2;
+        continue;
+      }
+    }
+    if (markdown[i] === "*" && markdown[i + 1] !== "*") {
+      const end = markdown.indexOf("*", i + 1);
+      if (end !== -1 && markdown[end + 1] !== "*") {
+        const inner = markdown.slice(i + 1, end);
+        styles.push({ start: cleanText.length, len: inner.length, st: "i" });
+        cleanText += inner;
+        i = end + 1;
+        continue;
+      }
+    }
+    cleanText += markdown[i];
+    i++;
+  }
+
+  return { message: cleanText, styles };
+}
+
 export class FuncClient {
   private client: AxiosInstance;
   private baseUrl: string;
@@ -54,21 +121,57 @@ export class FuncClient {
     }
   }
 
-  // --- Send Message (Platform-Aware) ---
+  // --- Send Message (Platform-Aware & Schema Synchronized) ---
   async sendMessage(
-    contactPid: string,
+    recipientIdentifier: string,
     text: string,
     platform: FuncPlatform = "ZALO_USER"
   ) {
-    let action = "USER_SEND_MESSAGE";
-    if (platform === "FACEBOOK_PAGE") {
-      action = "PAGE_SEND_MESSAGE";
-    } else if (platform === "ZALO_OA") {
-      action = "OA_SEND_MESSAGE";
+    // 1. Zalo User: Dùng USER_SEND_MESSAGE với user_id hoặc phone_number
+    if (platform === "ZALO_USER") {
+      const { message, styles } = formatZaloMarkdown(text);
+      const isPhone = /^(0|\+84)[0-9]{9,10}$/.test(recipientIdentifier);
+      const cleanId = recipientIdentifier.replace(/^zuser_/, "");
+
+      return this.callAction("USER_SEND_MESSAGE", {
+        ...(isPhone ? { phone_number: recipientIdentifier } : { user_id: cleanId }),
+        message,
+        ...(styles.length > 0 ? { styles } : {}),
+      });
     }
 
-    return this.callAction(action, {
-      contact_pid: contactPid,
+    // 2. Facebook Page: Dùng SEND_MESSAGE với recipient.id
+    if (platform === "FACEBOOK_PAGE") {
+      const psid = recipientIdentifier.replace(/^fbpage_|^fb_/, "");
+      return this.callAction("SEND_MESSAGE", {
+        recipient: { id: psid },
+        message: { text },
+      });
+    }
+
+    // 3. WhatsApp User: Dùng SEND_MESSAGE với chat_id
+    if (platform === "WHATSAPP_USER") {
+      const chatId = recipientIdentifier.includes("@")
+        ? recipientIdentifier
+        : `${recipientIdentifier.replace(/^\+|^wauser_/, "")}@s.whatsapp.net`;
+      return this.callAction("SEND_MESSAGE", {
+        chat_id: chatId,
+        message: text,
+      });
+    }
+
+    // 4. Zalo OA: Dùng SEND_MESSAGE với user_id và message_data
+    if (platform === "ZALO_OA") {
+      const cleanOaUser = recipientIdentifier.replace(/^zalo_oa_/, "");
+      return this.callAction("SEND_MESSAGE", {
+        user_id: cleanOaUser,
+        message_data: { text },
+      });
+    }
+
+    // Fallback mặc định
+    return this.callAction("USER_SEND_MESSAGE", {
+      user_id: recipientIdentifier,
       message: text,
     });
   }
@@ -201,7 +304,7 @@ export class FuncClient {
   }
 
   private getMockActionResult(action: string, data: any) {
-    if (action.includes("SEND_MESSAGE")) {
+    if (action.includes("SEND_MESSAGE") || action === "USER_SEND_MESSAGE") {
       return { success: true, messageId: "msg_" + Date.now(), ...data };
     }
     return { success: true, action, data };
@@ -209,4 +312,3 @@ export class FuncClient {
 }
 
 export const funcClient = new FuncClient();
-

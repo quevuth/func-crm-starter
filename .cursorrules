@@ -8,10 +8,10 @@ This repository connects to the Func Remote Documentation MCP Server:
 - **Cloud Endpoint:** `https://api.func.vn/mcp/sse`
 
 The MCP server provides **Documentation, Schemas, Code Recipes, and Implementation Guidance** (it does NOT execute live actions or send messages through MCP itself):
-- `func_docs`: Query platform architecture, authentication rules, Public vs Client API differences.
+- `func_docs`: Query platform architecture, authentication rules, Public vs Client API differences, and UTF-16 offset rules.
 - `func_list_actions`: Query available action names for `ZALO_USER`, `ZALO_OA`, `FACEBOOK_PAGE`, `WHATSAPP_USER`, `FUNC`.
-- `func_get_action_schema`: Inspect exact JSON Schema parameters before writing API requests. **Always pass both `platform` ('ZALO_USER', 'ZALO_OA', 'FACEBOOK_PAGE', 'FACEBOOK_USER', 'WHATSAPP_USER', 'FUNC') and `action_name`**.
-- `func_get_action_guide`: **(Primary Guidance Tool)** Get step-by-step instructions, endpoints, headers, payload JSON, and TypeScript code snippets on how to implement any action. **Always pass both `platform` and `action_name`** (e.g. `platform: 'ZALO_USER'`, `action_name: 'USER_SEND_MESSAGE'`).
+- `func_get_action_schema`: Inspect exact JSON Schema parameters and business metadata before writing API requests. **Always pass both `platform` ('ZALO_USER', 'ZALO_OA', 'FACEBOOK_PAGE', 'FACEBOOK_USER', 'WHATSAPP_USER', 'FUNC') and `action_name`**.
+- `func_get_action_guide`: **(Primary Guidance Tool)** Get step-by-step instructions, endpoints, headers, payload JSON, UTF-16 offset rules, and TypeScript code snippets on how to implement any action. **Always pass both `platform` and `action_name`** (e.g. `platform: 'ZALO_USER'`, `action_name: 'USER_SEND_MESSAGE'`).
 - `func_get_client_api_guide`: Get recipes for Client REST endpoints (`/accounts`, `/contacts`, `/messages`, base64 filter pagination).
 - `func_get_webhook_guide`: Recipes for building real-time webhook listeners for incoming customer messages.
 - `func_generate_typescript_sdk`: Generate complete typed SDK code to drop into the CRM project.
@@ -31,11 +31,16 @@ When generating CRM features in this project:
        "data": { ...parameters }
      }
      ```
-2. **Platform-Aware Messaging Actions:**
-   - Zalo cá nhân (`ZALO_USER`): Action `USER_SEND_MESSAGE` (contact_pid starts with `zuser_`).
-   - Fanpage Facebook (`FACEBOOK_PAGE`): Action `PAGE_SEND_MESSAGE` (contact_pid starts with `fbpage_`).
-   - Zalo OA Doanh nghiệp (`ZALO_OA`): Action `OA_SEND_MESSAGE`.
-   - WhatsApp (`WHATSAPP_USER`): Action `USER_SEND_MESSAGE`.
+2. **Platform-Aware Messaging Actions (CRITICAL SCHEMA SYNCHRONIZATION):**
+   - Zalo cá nhân (`ZALO_USER`): Action `USER_SEND_MESSAGE`
+     - Recipient: `user_id: string` (Zalo origin ID) OR `phone_number: string`. **NEVER pass `contact_pid` here!**
+     - Text & Formatting: Format with `formatZaloMarkdown(text)` from `src/lib/func-client.ts` to get accurate UTF-16 `styles` (bold, italic, strike, underline).
+   - Fanpage Facebook (`FACEBOOK_PAGE`): Action `SEND_MESSAGE`
+     - Recipient: `recipient: { id: psid }`
+     - Content: `message: { text: "..." }`
+   - Zalo OA Doanh nghiệp (`ZALO_OA`): Action `SEND_MESSAGE` (`user_id`, `message_data: { text }`) or `ZNS_SEND_TEMPLATE` (`phone_number`, `template_id`, `template_data`).
+   - WhatsApp (`WHATSAPP_USER`): Action `SEND_MESSAGE` (`chat_id: "8491...@s.whatsapp.net"`, `message: "..."`).
+   - CRM Aggregation Level (`FUNC`): Action `FUNC_RUN_FLOW`, `FUNC_GET_MESSAGES` (here `contact_pid` is accepted).
 
 3. **Data Handling & Best Practices:**
    - Always normalize Vietnamese phone numbers with country code `+84` before searching or storing (e.g. `0912345678` -> `+84912345678`).

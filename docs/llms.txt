@@ -2,7 +2,7 @@
 > Func (https://func.vn) is an Omnichannel Social CRM & Automation Backend for Zalo (User & Official Account), Facebook (Page & User Profile), and WhatsApp.
 
 ## 1. Quick Integration Summary
-Developers or AI coding agents can integrate with Func via two primary mechanisms:
+Developers or AI coding agents can integrate with Func via three primary mechanisms:
 - **Model Context Protocol (MCP):** Connect your AI Agent directly to `https://api.func.vn/mcp/sse?token=<API_TOKEN>`.
 - **Public API (Machine-to-Machine RPC):** Send actions to `POST https://api.func.vn/public/functions/api`.
 - **Client API (Multi-Tenant CRM):** Authenticate with JWT and call REST endpoints `/accounts/:account_pid/...`.
@@ -41,30 +41,49 @@ All programmatic actions are dispatched via a single endpoint:
   }
   ```
 
+### Platform-Native Recipient Identifiers (CRITICAL FOR AI AGENTS):
+- When calling Public RPC actions for specific social networks, use platform-native IDs (**DO NOT USE `contact_pid`**):
+  - **ZALO_USER:** `user_id` (Zalo origin ID) OR `phone_number` (e.g. `"0912345678"`).
+  - **ZALO_OA:** `user_id` (OA follower user ID).
+  - **FACEBOOK_PAGE:** `recipient: { id: "psid" }`.
+  - **WHATSAPP_USER:** `chat_id` (e.g. `"84912345678@s.whatsapp.net"`).
+- `contact_pid` (e.g. `"zuser_123456"`) is ONLY used at the `FUNC` aggregation level (`FUNC_RUN_FLOW`, `FUNC_GET_MESSAGES`) or Client REST API (`/accounts/:account_pid/messages`).
+
 ### Most Common Actions:
-- `USER_SEND_MESSAGE` (Zalo/WhatsApp): Send 1-1 message `{ contact_pid: string, message: string }`
-- `PAGE_SEND_MESSAGE` (Facebook Page): Send message from fanpage `{ contact_pid: string, message: string }`
-- `GROUP_SEND_MESSAGE` (Zalo): Send message to group `{ group_id: string, message: string }`
-- `FIND_USER` (Zalo): Find contact profile by phone `{ phone: string }`
-- `FUNC_RUN_FLOW`: Trigger an automated automation flow `{ contact_pid: string, input?: Record<string, any> }`
-- `FUNC_CREATE_CONTACT`: Add or upsert a CRM customer `{ origin_id: string, name?: string, phone?: string }`
-- `FUNC_GET_MESSAGES`: Fetch chat history `{ contact_pid: string, limit?: number }`
+- `USER_SEND_MESSAGE` (Zalo User): `{ user_id?: string, phone_number?: string, message: string, styles?: Array<{ start: number, len: number, st: "b"|"i"|"u"|"s" }> }`
+- `SEND_MESSAGE` (Facebook Page): `{ recipient: { id: string }, message: { text: string } }`
+- `SEND_MESSAGE` (WhatsApp User): `{ chat_id: string, message: string }`
+- `SEND_MESSAGE` (Zalo OA): `{ user_id: string, message_data: { text: string } }`
+- `ZNS_SEND_TEMPLATE` (Zalo OA): `{ phone_number: string, template_id: string, tracking_id: string, template_data: Record<string, any> }`
+- `GROUP_SEND_MESSAGE` (Zalo Group): `{ group_id: string, message: string, styles?: Array<{ start: number, len: number, st: string }> }`
+- `FIND_USER` (Zalo User): `{ phone_number: string }`
+- `FUNC_RUN_FLOW` (Automation): `{ contact_pid: string, input?: Record<string, any> }`
+- `FUNC_CREATE_CONTACT` (CRM): `{ origin_id: string, name?: string, phone?: string }`
+- `FUNC_GET_MESSAGES` (CRM): `{ contact_pid: string, limit?: number }`
 
 ---
 
-## 4. Client REST API Endpoints
+## 4. Zalo Text Formatting & UTF-16 Offset Rules
+- In `USER_SEND_MESSAGE` and `GROUP_SEND_MESSAGE`, `styles` defines formatting:
+  - `st`: `"b"` (bold), `"i"` (italic), `"u"` (underline), `"s"` (strikethrough), `"c_<color>"` (color).
+  - `start` & `len` MUST be calculated using **UTF-16 code units** (standard JavaScript string indexing).
+  - Emoji characters (e.g. 😊, 🚀, 🔥) count as **2 code units**. Add +2 to `start` for any emoji preceding formatted text.
+
+---
+
+## 5. Client REST API Endpoints
 When building a custom web or mobile CRM interface:
 - `GET /accounts`: List all connected social channels for the authenticated user.
 - `GET /accounts/:account_pid/contacts?filter=<base64_json>`: List contacts with filters (search, tags, pagination).
 - `POST /accounts/:account_pid/contacts`: Create a new contact.
 - `PUT /accounts/:account_pid/contacts/:contact_pid`: Update contact tags, notes, attributes.
 - `GET /accounts/:account_pid/contacts/:contact_pid/messages?limit=30`: Retrieve conversation messages.
-- `POST /accounts/:account_pid/messages`: Send an outbound message.
+- `POST /accounts/:account_pid/messages`: Send an outbound message (`{ contact_pid: string, message: string }`).
 
 ---
 
-## 5. Realtime Events & Webhooks
-Func pushes events to your server when new messages or contacts arrive.
+## 6. Realtime Events & Webhooks
+Func pushes events to your server when new messages arrive.
 - **Webhook Payload Sample:**
   ```json
   {
@@ -82,17 +101,16 @@ Func pushes events to your server when new messages or contacts arrive.
     }
   }
   ```
-- **Socket.IO:** Connect to `wss://api.func.vn` with `{ auth: { token: "<USER_JWT>" } }` for live desktop/mobile push.
+- **Socket.IO:** Connect to `wss://api.func.vn` with `{ auth: { token: "<USER_JWT>" } }` for live push.
 
 ---
 
-## 6. Remote MCP Server Endpoint
+## 7. Remote MCP Server Endpoint
 AI Agents (Cursor, Windsurf, Claude Code, Cline) can connect to:
 - **SSE Stream:** `https://api.func.vn/mcp/sse?token=<API_TOKEN>`
 - **Direct POST:** `https://api.func.vn/mcp`
-Available tools: `func_docs`, `func_list_actions`, `func_get_action_schema`, `func_list_accounts`, `func_get_contacts`, `func_get_messages`, `func_send_message`, `func_call_api`, `func_generate_typescript_sdk`.
+Available tools: `func_docs`, `func_list_actions`, `func_get_action_schema`, `func_get_action_guide`, `func_get_client_api_guide`, `func_get_webhook_guide`, `func_generate_typescript_sdk`.
 
 ---
 
 For extended reference, full schemas, and TypeScript examples, see: `https://api.func.vn/llms-full.txt`.
-
