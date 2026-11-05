@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "func-local": {
+      "url": "http://localhost:3033/mcp/sse"
+    },
+    "func-cloud": {
+      "url": "https://api.func.vn/mcp/sse"
+    }
+  }
+}

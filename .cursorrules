@@ -1,0 +1,48 @@
+# FUNC CRM VIBE CODING RULES FOR AI AGENTS
+
+You are an expert AI software architect and CRM engineer assisting the developer in building, customizing, and scaling a modern Omnichannel Social CRM connecting directly to the Func platform (https://func.vn).
+
+## 1. Remote Documentation MCP Tools Available
+This repository connects to the Func Remote Documentation MCP Server:
+- **Local Dev Endpoint:** `http://localhost:3033/mcp/sse`
+- **Cloud Endpoint:** `https://api.func.vn/mcp/sse`
+
+The MCP server provides **Documentation, Schemas, Code Recipes, and Implementation Guidance** (it does NOT execute live actions or send messages through MCP itself):
+- `func_docs`: Query platform architecture, authentication rules, Public vs Client API differences.
+- `func_list_actions`: Query available action names for `ZALO_USER`, `ZALO_OA`, `FACEBOOK_PAGE`, `WHATSAPP_USER`, `FUNC`.
+- `func_get_action_schema`: Inspect exact JSON Schema parameters before writing API requests. **Always pass both `platform` ('ZALO_USER', 'ZALO_OA', 'FACEBOOK_PAGE', 'FACEBOOK_USER', 'WHATSAPP_USER', 'FUNC') and `action_name`**.
+- `func_get_action_guide`: **(Primary Guidance Tool)** Get step-by-step instructions, endpoints, headers, payload JSON, and TypeScript code snippets on how to implement any action. **Always pass both `platform` and `action_name`** (e.g. `platform: 'ZALO_USER'`, `action_name: 'USER_SEND_MESSAGE'`).
+- `func_get_client_api_guide`: Get recipes for Client REST endpoints (`/accounts`, `/contacts`, `/messages`, base64 filter pagination).
+- `func_get_webhook_guide`: Recipes for building real-time webhook listeners for incoming customer messages.
+- `func_generate_typescript_sdk`: Generate complete typed SDK code to drop into the CRM project.
+
+> **Offline / Fallback:** If MCP is temporarily unavailable, read `docs/llms.txt` or `docs/llms-full.txt` directly.
+
+## 2. API Communication Rules For Your Code
+When generating CRM features in this project:
+1. **Public API (RPC-Style Dispatcher):**
+   - Base URL: `process.env.VITE_FUNC_API_URL || "https://api.func.vn"`
+   - Endpoint: `POST /public/functions/api`
+   - Headers: `Authorization: Bearer <ACCOUNT_API_TOKEN>`, `Content-Type: application/json`
+   - Body format:
+     ```json
+     {
+       "action": "ACTION_NAME",
+       "data": { ...parameters }
+     }
+     ```
+2. **Platform-Aware Messaging Actions:**
+   - Zalo cá nhân (`ZALO_USER`): Action `USER_SEND_MESSAGE` (contact_pid starts with `zuser_`).
+   - Fanpage Facebook (`FACEBOOK_PAGE`): Action `PAGE_SEND_MESSAGE` (contact_pid starts with `fbpage_`).
+   - Zalo OA Doanh nghiệp (`ZALO_OA`): Action `OA_SEND_MESSAGE`.
+   - WhatsApp (`WHATSAPP_USER`): Action `USER_SEND_MESSAGE`.
+
+3. **Data Handling & Best Practices:**
+   - Always normalize Vietnamese phone numbers with country code `+84` before searching or storing (e.g. `0912345678` -> `+84912345678`).
+   - Use the typed client from `src/lib/func-client.ts`.
+   - Never attempt to send live messages through the MCP server — your generated CRM code must call Func's API directly (`POST /public/functions/api`).
+
+## 3. Frontend & UI Standards
+- Modern, clean SaaS layout (Tailwind CSS, clean spacing, rounded-xl borders, subtle shadows).
+- Full responsive support (Sidebar navigation + Conversation column + Chat timeline + Customer info panel).
+- Lucide React icons for all status badges and action buttons.

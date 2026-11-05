@@ -1,0 +1,266 @@
+# Func Platform - Full Technical Specification & LLM Reference (llms-full.txt)
+
+## Table of Contents
+1. System Architecture & Entities
+2. Authentication Specifications
+3. Model Context Protocol (MCP) Server
+4. Public API Actions Reference (RPC)
+5. Client REST API Specification
+6. Webhook & Real-time Integration
+7. Type Definitions & Code Examples
+
+---
+
+## 1. System Architecture & Entities
+
+Func operates as an omnichannel aggregation backend for customer engagement. The primary data models include:
+
+- **Account:** Represents a connected social channel (Zalo Personal User, Zalo OA, Facebook Page, Facebook User, WhatsApp).
+  - `pid`: Unique Public ID (e.g. `acc_...`)
+  - `platform`: `ZALO_USER` | `ZALO_OA` | `FACEBOOK_PAGE` | `FACEBOOK_USER` | `WHATSAPP_USER`
+  - `name`: Channel display name
+  - `api_token`: Channel-specific API token for Public API operations
+
+- **Contact:** Represents a customer across connected channels.
+  - `pid`: Public ID formatted as `<platform_prefix>_<origin_id>` (e.g. `zuser_123456`)
+  - `account_pid`: Associated channel account PID
+  - `name`: Display name
+  - `phone`: Cleaned phone number with country code (e.g. `+84912345678`)
+  - `tags`: Array of tag objects `{ id, name, color }`
+  - `attrs`: Custom dynamic key-value attributes
+
+- **Message:** Communication item within a conversation thread.
+  - `id`: Unique message ID
+  - `contact_pid`: Recipient / sender contact PID
+  - `text`: Text content
+  - `attachments`: Array of uploaded file IDs / URLs
+  - `sent_at`: Timestamp (ms)
+
+---
+
+## 2. Authentication Specifications
+
+### 2.1 Public API (Machine-to-Machine)
+- Every request must include the header:
+  `Authorization: Bearer <FUNC_ACCOUNT_API_TOKEN>`
+- The token is decrypted and mapped to an active `Account` document in the database.
+
+### 2.2 Client REST API (User Session)
+- Request authentication via Basic auth:
+  ```http
+  POST /auth/signin HTTP/1.1
+  Host: api.func.vn
+  Authorization: Basic base64(email:password)
+  ```
+- Receive JWT token in response. Pass on subsequent calls:
+  `Authorization: Bearer <USER_JWT_TOKEN>`
+
+---
+
+## 3. Model Context Protocol (MCP) Server
+
+Func provides a native Remote MCP Server complying with the official Model Context Protocol specifications.
+
+### Endpoints
+- **SSE Connection:** `GET /mcp/sse?token=<TOKEN>`
+  - Generates a unique session. Returns event stream with `endpoint: /mcp/messages?sessionId=<ID>`.
+- **SSE Messages:** `POST /mcp/messages?sessionId=<ID>`
+  - Receives JSON-RPC 2.0 payloads and delivers responses back via the open SSE stream.
+- **Stateless Direct POST:** `POST /mcp`
+  - Accepts standard JSON-RPC 2.0 (`tools/list`, `tools/call`, `initialize`) and returns response synchronously.
+
+### MCP Tools Catalogue
+1. `func_docs`: Returns architecture, guidelines, and integration manuals.
+2. `func_list_actions`: Lists all available RPC actions grouped by platform.
+3. `func_get_action_schema`: Fetches exact JSON Schema parameters for any given action.
+4. `func_list_accounts`: Returns connected accounts accessible to the token.
+5. `func_get_contacts`: Queries contacts by name, phone, tags, or pagination.
+6. `func_get_messages`: Retrieves recent chat history with a contact.
+7. `func_send_message`: Sends outbound messages to customers across channels.
+8. `func_call_api`: Generic dispatcher to execute any Func action.
+9. `func_generate_typescript_sdk`: Generates ready-to-use TypeScript code for the client CRM.
+
+---
+
+## 4. Public API Actions Reference (RPC)
+
+Base Endpoint: `POST https://api.func.vn/public/functions/api`
+
+### 4.1 Message Actions
+- **USER_SEND_MESSAGE** (Zalo User / WhatsApp):
+  ```json
+  {
+    "action": "USER_SEND_MESSAGE",
+    "data": {
+      "contact_pid": "zuser_123456",
+      "message": "Hello from CRM",
+      "attachment_ids": []
+    }
+  }
+  ```
+
+- **PAGE_SEND_MESSAGE** (Facebook Page):
+  ```json
+  {
+    "action": "PAGE_SEND_MESSAGE",
+    "data": {
+      "contact_pid": "fbpage_123456",
+      "message": "Thank you for contacting us"
+    }
+  }
+  ```
+
+- **GROUP_SEND_MESSAGE** (Zalo Groups):
+  ```json
+  {
+    "action": "GROUP_SEND_MESSAGE",
+    "data": {
+      "group_id": "group_123456",
+      "message": "Meeting starts in 10 minutes"
+    }
+  }
+  ```
+
+### 4.2 Contact & Friend Management
+- **FIND_USER** (Zalo):
+  ```json
+  {
+    "action": "FIND_USER",
+    "data": {
+      "phone": "+84912345678"
+    }
+  }
+  ```
+
+- **REQUEST_FRIEND** (Zalo):
+  ```json
+  {
+    "action": "REQUEST_FRIEND",
+    "data": {
+      "contact_pid": "zuser_123456",
+      "message": "Xin chào, mình kết nối trao đổi nhé"
+    }
+  }
+  ```
+
+### 4.3 Flow & Automation
+- **FUNC_RUN_FLOW**:
+  ```json
+  {
+    "action": "FUNC_RUN_FLOW",
+    "data": {
+      "contact_pid": "zuser_123456",
+      "input": {
+        "order_id": "ORD-9981",
+        "total_amount": 500000
+      }
+    }
+  }
+  ```
+
+---
+
+## 5. Client REST API Specification
+
+Base Endpoint: `https://api.func.vn`
+Auth: `Authorization: Bearer <USER_JWT_TOKEN>`
+
+### 5.1 Account Management
+- `GET /accounts`: Get all connected channels.
+
+### 5.2 Contact Management
+- `GET /accounts/:account_pid/contacts?filter=<base64_encoded_json>`
+  - Decoded filter: `{ "limit": 20, "name": "Nam", "sort_by": "last_content_at", "sort_type": "DESC" }`
+- `POST /accounts/:account_pid/contacts`
+  - Body: `{ "origin_id": "...", "name": "...", "phone": "+84...", "note": "..." }`
+- `PUT /accounts/:account_pid/contacts/:contact_pid`
+  - Body: `{ "tag_ids": ["tag_1", "tag_2"], "note": "VIP Customer", "attrs": { "company": "Func JSC" } }`
+
+### 5.3 Messaging
+- `GET /accounts/:account_pid/contacts/:contact_pid/messages?limit=50`
+- `POST /accounts/:account_pid/messages`
+  - Body: `{ "contact_pid": "...", "text": "...", "attachments": [] }`
+
+---
+
+## 6. Webhook & Real-time Integration
+
+### 6.1 Configuring Inbound Webhooks
+In Func Dashboard, set your Webhook URL to: `https://your-crm.domain.com/api/webhook/func`
+
+### 6.2 Sample Inbound Event:
+```json
+{
+  "event": "message.created",
+  "timestamp": 1740000000000,
+  "account_pid": "acc_001",
+  "contact": {
+    "pid": "zuser_001",
+    "name": "Tran Van B",
+    "phone": "+84901234567",
+    "avatar": "https://s120.avatar.zalo.me/..."
+  },
+  "message": {
+    "id": "msg_001",
+    "text": "Mình muốn đặt hàng 2 sản phẩm",
+    "sent_at": 1740000000000,
+    "attachments": []
+  }
+}
+```
+
+### 6.3 Socket.IO Real-time Connection
+- Client connects to `wss://api.func.vn` with `{ auth: { token: "<USER_JWT>" } }`
+- Available rooms: `account:<account_pid>`, `user:<user_id>`
+- Realtime events:
+  - `message`: Emitted when any new inbound or outbound message occurs.
+  - `contact.update`: Emitted when customer profile, tags, or status change.
+
+---
+
+## 7. Ready-to-Use TypeScript Client SDK
+
+```typescript
+import axios, { AxiosInstance } from "axios";
+
+export interface FuncOptions {
+  baseUrl?: string;
+  apiToken?: string;
+  userToken?: string;
+}
+
+export class FuncCRMClient {
+  private client: AxiosInstance;
+
+  constructor(options: FuncOptions) {
+    const baseURL = options.baseUrl || "https://api.func.vn";
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (options.apiToken) headers["Authorization"] = `Bearer ${options.apiToken}`;
+    else if (options.userToken) headers["Authorization"] = `Bearer ${options.userToken}`;
+
+    this.client = axios.create({ baseURL, headers });
+  }
+
+  // RPC Public Action
+  async callAction<T = any>(action: string, data: Record<string, any> = {}): Promise<T> {
+    const res = await this.client.post("/public/functions/api", { action, data });
+    return res.data?.data !== undefined ? res.data.data : res.data;
+  }
+
+  // Quick Message Sender
+  async sendZaloMessage(contactPid: string, text: string) {
+    return this.callAction("USER_SEND_MESSAGE", {
+      contact_pid: contactPid,
+      message: text,
+    });
+  }
+
+  // Fetch Contacts
+  async getContacts(accountPid: string, limit = 20) {
+    const filter = Buffer.from(JSON.stringify({ limit })).toString("base64");
+    const res = await this.client.get(`/accounts/${accountPid}/contacts?filter=${filter}`);
+    return res.data?.data !== undefined ? res.data.data : res.data;
+  }
+}
+```
+
