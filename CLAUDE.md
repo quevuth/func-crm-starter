@@ -25,7 +25,9 @@ This project is a modern Omnichannel Social CRM connecting to **Func.vn** (Zalo 
 2. **Zalo Text Formatting & UTF-16 Code Units:**
    - Use `formatZaloMarkdown(text)` from `src/lib/func-client.ts` to convert Markdown (`**bold**`, `*italic*`, `~~strike~~`, `__underline__`) into `{ message, styles }` with 100% accurate UTF-16 offsets (automatically handles emoji surrogate pairs).
 3. **MCP Tool Invocations:**
+   - Tools: `func_docs`, `func_list_actions`, `func_get_action_schema`, `func_get_action_guide`, `func_get_pricing`, `func_get_client_api_guide`, `func_get_webhook_guide`, `func_generate_typescript_sdk`.
    - Always pass both `platform` ('ZALO_USER', 'ZALO_OA', 'FACEBOOK_PAGE', 'FACEBOOK_USER', 'WHATSAPP_USER', 'FUNC') and `action_name` when calling `func_get_action_schema` or `func_get_action_guide`.
+   - Use `func_get_pricing` to inspect package prices, features, and calculate cycle discounts.
 4. **Subscription Plans & Permissions:**
    - 4 tiers: **Basic**, **Standard**, **Advanced**, **Advanced +**.
    - Public API: Most actions only require **Basic**. `FUNC_RUN_FLOW` strictly requires **Standard plan or higher**.

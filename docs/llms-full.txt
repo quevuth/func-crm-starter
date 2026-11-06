@@ -76,9 +76,10 @@ Func provides a native Remote MCP Server complying with the official Model Conte
 2. `func_list_actions`: Lists all available RPC actions grouped by platform.
 3. `func_get_action_schema`: Fetches exact JSON Schema parameters and AI-first metadata (preconditions, rate limits, error codes) for any given action.
 4. `func_get_action_guide`: Detailed step-by-step implementation guide for an action.
-5. `func_get_client_api_guide`: Instructions for Client REST API integration.
-6. `func_get_webhook_guide`: Instructions for real-time Webhook handling.
-7. `func_generate_typescript_sdk`: Generates ready-to-use TypeScript code with Markdown parser for the client CRM.
+5. `func_get_pricing`: Query pricing tables, package features (Basic, Standard, Advanced, Advanced+), and cycle discounts.
+6. `func_get_client_api_guide`: Instructions for Client REST API integration.
+7. `func_get_webhook_guide`: Instructions for real-time Webhook handling.
+8. `func_generate_typescript_sdk`: Generates ready-to-use TypeScript code with Markdown parser for the client CRM.
 
 ---
 

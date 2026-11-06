@@ -12,6 +12,7 @@ The MCP server provides **Documentation, Schemas, Code Recipes, and Implementati
 - `func_list_actions`: Query available action names for `ZALO_USER`, `ZALO_OA`, `FACEBOOK_PAGE`, `WHATSAPP_USER`, `FUNC`.
 - `func_get_action_schema`: Inspect exact JSON Schema parameters and business metadata before writing API requests. **Always pass both `platform` ('ZALO_USER', 'ZALO_OA', 'FACEBOOK_PAGE', 'FACEBOOK_USER', 'WHATSAPP_USER', 'FUNC') and `action_name`**.
 - `func_get_action_guide`: **(Primary Guidance Tool)** Get step-by-step instructions, endpoints, headers, payload JSON, UTF-16 offset rules, and TypeScript code snippets on how to implement any action. **Always pass both `platform` and `action_name`** (e.g. `platform: 'ZALO_USER'`, `action_name: 'USER_SEND_MESSAGE'`).
+- `func_get_pricing`: Query pricing tables, package features (Basic, Standard, Advanced, Advanced+), and cycle discounts.
 - `func_get_client_api_guide`: Get recipes for Client REST endpoints (`/accounts`, `/contacts`, `/messages`, base64 filter pagination).
 - `func_get_webhook_guide`: Recipes for building real-time webhook listeners for incoming customer messages.
 - `func_generate_typescript_sdk`: Generate complete typed SDK code to drop into the CRM project.

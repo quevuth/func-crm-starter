@@ -120,7 +120,7 @@ Func pushes events to your server when new messages arrive.
 AI Agents (Cursor, Windsurf, Claude Code, Cline) can connect to:
 - **SSE Stream:** `https://api.func.vn/mcp/sse?token=<API_TOKEN>`
 - **Direct POST:** `https://api.func.vn/mcp`
-Available tools: `func_docs`, `func_list_actions`, `func_get_action_schema`, `func_get_action_guide`, `func_get_client_api_guide`, `func_get_webhook_guide`, `func_generate_typescript_sdk`.
+Available tools: `func_docs`, `func_list_actions`, `func_get_action_schema`, `func_get_action_guide`, `func_get_pricing`, `func_get_client_api_guide`, `func_get_webhook_guide`, `func_generate_typescript_sdk`.
 
 ---
 
