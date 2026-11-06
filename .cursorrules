@@ -47,6 +47,11 @@ When generating CRM features in this project:
    - Use the typed client from `src/lib/func-client.ts`.
    - Never attempt to send live messages through the MCP server — your generated CRM code must call Func's API directly (`POST /public/functions/api`).
 
+4. **Subscription Plans & Permissions:**
+   - 4 tiers: **Basic**, **Standard**, **Advanced**, **Advanced +**.
+   - Public API: Most actions only require **Basic**. `FUNC_RUN_FLOW` strictly requires **Standard plan or higher**.
+   - Client REST API: Read endpoints require user login (any tier). Outbound messaging (`POST /accounts/:account_pid/messages`) requires **Standard plan or higher**.
+
 ## 3. Frontend & UI Standards
 - Modern, clean SaaS layout (Tailwind CSS, clean spacing, rounded-xl borders, subtle shadows).
 - Full responsive support (Sidebar navigation + Conversation column + Chat timeline + Customer info panel).

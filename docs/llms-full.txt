@@ -4,11 +4,12 @@
 1. System Architecture & Entities
 2. Authentication Specifications
 3. Model Context Protocol (MCP) Server
-4. Public API Actions Reference (RPC)
-5. Zalo Text Formatting & UTF-16 Offset Rules
-6. Client REST API Specification
-7. Webhook & Real-time Integration
-8. Type Definitions & Code Examples
+4. Subscription Plans & API Permissions
+5. Public API Actions Reference (RPC)
+6. Zalo Text Formatting & UTF-16 Offset Rules
+7. Client REST API Specification
+8. Webhook & Real-time Integration
+9. Type Definitions & Code Examples
 
 ---
 
@@ -81,7 +82,19 @@ Func provides a native Remote MCP Server complying with the official Model Conte
 
 ---
 
-## 4. Public API Actions Reference (RPC)
+## 4. Subscription Plans & API Permissions (Basic, Standard, Advanced, Advanced +)
+
+Func enforces permissions across 4 subscription tiers:
+- **Basic:**
+  - Public API: Grants access to most channel RPC actions (Zalo User messaging, Facebook Page messaging, WhatsApp messaging, Zalo OA messaging, friend requests, contact management).
+  - Client REST API: Grants access to read-only endpoints (`GET /accounts`, `GET /contacts`, `GET /messages`).
+- **Standard (or higher: Standard, Advanced, Advanced +):**
+  - Public API: Bắt buộc để sử dụng **Automation Flow (`FUNC_RUN_FLOW`)**. Gói Basic sẽ bị chặn với mã lỗi `403 Forbidden (PLAN_UPGRADE_REQUIRED)`.
+  - Client REST API: Bắt buộc để thực hiện **gửi tin nhắn qua Client REST API (`POST /accounts/:account_pid/messages`)**.
+
+---
+
+## 5. Public API Actions Reference (RPC)
 
 Base Endpoint: `POST https://api.func.vn/public/functions/api`
 Header: `Authorization: Bearer <FUNC_ACCOUNT_API_TOKEN>`
@@ -232,7 +245,7 @@ Header: `Authorization: Bearer <FUNC_ACCOUNT_API_TOKEN>`
 
 ---
 
-## 5. Zalo Text Formatting & UTF-16 Offset Rules
+## 6. Zalo Text Formatting & UTF-16 Offset Rules
 
 Zalo calculates character offsets (`start` and `len`) in `styles` using **UTF-16 code units**:
 - **Standard Vietnamese characters (NFC):** Each character counts as **1 code unit**.
@@ -300,25 +313,25 @@ export function formatZaloMarkdown(markdown: string): {
 
 ---
 
-## 6. Client REST API Specification
+## 7. Client REST API Specification
 
-### 6.1 Authentication
+### 7.1 Authentication
 `POST /auth/signin` with Basic Auth. Returns User JWT.
 
-### 6.2 Accounts
+### 7.2 Accounts
 `GET /accounts` with `Authorization: Bearer <USER_JWT>`. Returns list of connected accounts.
 
-### 6.3 Contacts
+### 7.3 Contacts
 `GET /accounts/:account_pid/contacts?filter=<base64_json>`
 `PUT /accounts/:account_pid/contacts/:contact_pid` (Update tags/notes)
 
-### 6.4 Messages
-`GET /accounts/:account_pid/contacts/:contact_pid/messages?limit=30`
-`POST /accounts/:account_pid/messages` with `{ "contact_pid": "zuser_123456", "message": "Text" }`
+### 7.4 Messages
+`GET /accounts/:account_pid/contacts/:contact_pid/messages?limit=30` (Read history)
+`POST /accounts/:account_pid/messages` with `{ "contact_pid": "zuser_123456", "message": "Text" }` (⚠️ **Requires Standard plan or higher**)
 
 ---
 
-## 7. Webhook & Real-time Integration
+## 8. Webhook & Real-time Integration
 
 Configure Webhook URL in Func Dashboard. Payload sample:
 ```json
@@ -340,6 +353,6 @@ Configure Webhook URL in Func Dashboard. Payload sample:
 
 ---
 
-## 8. Complete TypeScript SDK Implementation
+## 9. Complete TypeScript SDK Implementation
 
 See `func_generate_typescript_sdk` tool on the MCP server for the full drop-in TypeScript class.

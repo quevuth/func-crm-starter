@@ -63,7 +63,18 @@ All programmatic actions are dispatched via a single endpoint:
 
 ---
 
-## 4. Zalo Text Formatting & UTF-16 Offset Rules
+## 4. Subscription Plans & Permissions (Basic, Standard, Advanced, Advanced +)
+Func categorizes permissions across 4 tiers: **Basic**, **Standard**, **Advanced**, and **Advanced +**.
+- **Public API (Machine-to-Machine RPC):**
+  - Most Public API actions (messaging, friends, contact upsert) only require the **Basic** plan.
+  - **Exception:** Automation Flow action (`FUNC_RUN_FLOW`) strictly requires the **Standard plan or higher**.
+- **Client REST API:**
+  - Read & management endpoints (`GET /accounts`, `GET /contacts`, `GET /messages`) only require user login (any plan).
+  - Outbound messaging from Client CRM (`POST /accounts/:account_pid/messages`) strictly requires the **Standard plan or higher**.
+
+---
+
+## 5. Zalo Text Formatting & UTF-16 Offset Rules
 - In `USER_SEND_MESSAGE` and `GROUP_SEND_MESSAGE`, `styles` defines formatting:
   - `st`: `"b"` (bold), `"i"` (italic), `"u"` (underline), `"s"` (strikethrough), `"c_<color>"` (color).
   - `start` & `len` MUST be calculated using **UTF-16 code units** (standard JavaScript string indexing).
@@ -71,18 +82,18 @@ All programmatic actions are dispatched via a single endpoint:
 
 ---
 
-## 5. Client REST API Endpoints
+## 6. Client REST API Endpoints
 When building a custom web or mobile CRM interface:
 - `GET /accounts`: List all connected social channels for the authenticated user.
 - `GET /accounts/:account_pid/contacts?filter=<base64_json>`: List contacts with filters (search, tags, pagination).
 - `POST /accounts/:account_pid/contacts`: Create a new contact.
 - `PUT /accounts/:account_pid/contacts/:contact_pid`: Update contact tags, notes, attributes.
 - `GET /accounts/:account_pid/contacts/:contact_pid/messages?limit=30`: Retrieve conversation messages.
-- `POST /accounts/:account_pid/messages`: Send an outbound message (`{ contact_pid: string, message: string }`).
+- `POST /accounts/:account_pid/messages`: Send an outbound message (`{ contact_pid: string, message: string }`, requires Standard plan or higher).
 
 ---
 
-## 6. Realtime Events & Webhooks
+## 7. Realtime Events & Webhooks
 Func pushes events to your server when new messages arrive.
 - **Webhook Payload Sample:**
   ```json
@@ -105,7 +116,7 @@ Func pushes events to your server when new messages arrive.
 
 ---
 
-## 7. Remote MCP Server Endpoint
+## 8. Remote MCP Server Endpoint
 AI Agents (Cursor, Windsurf, Claude Code, Cline) can connect to:
 - **SSE Stream:** `https://api.func.vn/mcp/sse?token=<API_TOKEN>`
 - **Direct POST:** `https://api.func.vn/mcp`
